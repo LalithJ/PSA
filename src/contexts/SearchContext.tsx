@@ -1,10 +1,14 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { SearchFilter, SearchResult } from '../types';
-import toast from 'react-hot-toast';
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { SearchFilter, SearchResult } from "../types";
+import toast from "react-hot-toast";
 
 interface SearchContextType {
   searchResults: SearchResult[];
-  performSearch: (query: string, filters: SearchFilter, userId?: string) => Promise<void>;
+  performSearch: (
+    query: string,
+    filters: SearchFilter,
+    userId?: string,
+  ) => Promise<void>;
   loading: boolean;
 }
 
@@ -12,29 +16,34 @@ const SearchContext = createContext<SearchContextType | undefined>(undefined);
 
 export const useSearch = () => {
   const context = useContext(SearchContext);
-  if (!context) throw new Error('useSearch must be used within a SearchProvider');
+  if (!context)
+    throw new Error("useSearch must be used within a SearchProvider");
   return context;
 };
 
-export const SearchProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const SearchProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const performSearch = async (query: string, filters: SearchFilter, userId?: string) => {
+  const performSearch = async (
+    query: string,
+    filters: SearchFilter,
+    userId?: string,
+  ) => {
     setLoading(true);
     try {
-      const results = await import('../services/database').then(({ searchPeople }) =>
-        searchPeople(filters)
+      const results = await import("../services/database").then(
+        ({ searchPeople }) => searchPeople(filters),
       );
       setSearchResults(results);
 
-      if (userId) {
-        await import('../services/database').then(({ saveSearchHistory }) =>
-          saveSearchHistory(userId, query, filters, results.length)
-        );
-      }
-            toast.success(`Found ${results.length} result${results.length !== 1 ? 's' : ''}`);    } catch (err) {
-      console.error('Search failed:', err);
+      toast.success(
+        `Found ${results.length} result${results.length !== 1 ? "s" : ""}`,
+      );
+    } catch (err) {
+      console.error("Search failed:", err);
     } finally {
       setLoading(false);
     }
@@ -46,4 +55,3 @@ export const SearchProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     </SearchContext.Provider>
   );
 };
-

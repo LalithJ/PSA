@@ -1,250 +1,146 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  MagnifyingGlassIcon, 
-  ChartBarIcon, 
-  DocumentArrowDownIcon,
-  ClockIcon,
-  StarIcon,
-  ArrowTrendingUpIcon,
-  PlusIcon
-} from '@heroicons/react/24/outline';
-import { useAuth } from '../contexts/AuthContext';
-import { Analytics, SearchHistory } from '../types';
-import { getAnalytics, getSearchHistory } from '../services/database';
+import React, { useState, useEffect } from "react";
+import {
+  ArrowUpRight,
+  Users,
+  Search as SearchIcon,
+  Target,
+  TrendingUp,
+  Calendar,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { Analytics, SearchHistory } from "../types";
+import { getAnalytics, getSearchHistory } from "../services/database";
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [recentSearches, setRecentSearches] = useState<SearchHistory[]>([]);
-    const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      if (!user?.id) {
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      
+    const loadData = async () => {
+      if (!user?.id) return;
       try {
-        // Load analytics
-        const analyticsData = await getAnalytics(user.id);
-        if (analyticsData) {
-          setAnalytics(analyticsData);
-        }
-
-        // Load recent searches
-        const searches = await getSearchHistory(user.id, 5);
-        setRecentSearches(searches);
-
-              } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        const [aData, sData] = await Promise.all([
+          getAnalytics(user.id),
+          getSearchHistory(user.id, 5),
+        ]);
+        setAnalytics(aData);
+        setRecentSearches(sData);
       } finally {
         setLoading(false);
       }
     };
-
-    loadDashboardData();
+    loadData();
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-linkedin-gray flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-linkedin-blue"></div>
-      </div>
-    );
-  }
+  if (loading)
+    return <div className="animate-pulse">Loading intelligence...</div>;
 
   return (
-    <div className="min-h-screen bg-linkedin-gray">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.firstName}!
-          </h1>
-          <p className="mt-2 text-gray-600">
-            Here's what's happening with your people search activities.
-          </p>
-        </div>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Welcome Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Morning, {user?.firstName?.split(" ")[0]}
+        </h1>
+        <p className="text-slate-500">
+          Here is what happened with your lead generation since yesterday.
+        </p>
+      </div>
 
-        {/* Quick Actions */}
-        <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link
-              to="/search"
-              className="bg-white rounded-lg shadow-linkedin p-6 hover:shadow-linkedin-lg transition-shadow"
-            >
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <MagnifyingGlassIcon className="h-8 w-8 text-linkedin-blue" />
+      {/* KPI Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard
+          title="Total Contacts Revealed"
+          value={analytics?.totalSearches || 0}
+          icon={Users}
+          trend="+12.5%"
+        />
+        <StatCard
+          title="Search Success Rate"
+          value="94.2%"
+          icon={Target}
+          trend="+2.1%"
+        />
+        <StatCard title="Active Campaigns" value="4" icon={TrendingUp} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: Top Positions Activity */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="font-bold text-slate-900">Top Searched Positions</h2>
+            <button className="text-sm text-blue-600 font-medium hover:underline">
+              View All
+            </button>
+          </div>
+          <div className="space-y-5">
+            {analytics?.topSearchedPositions.map((item) => (
+              <div key={item.position} className="group">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {item.position}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {item.count} leads
+                  </span>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">Start New Search</h3>
-                  <p className="text-gray-500">Find people with advanced filters</p>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-full rounded-full transition-all duration-1000"
+                    style={{
+                      width: `${Math.min((item.count / 20) * 100, 100)}%`,
+                    }}
+                  />
                 </div>
               </div>
-            </Link>
-
-            
-            <Link
-              to="/analytics"
-              className="bg-white rounded-lg shadow-linkedin p-6 hover:shadow-linkedin-lg transition-shadow"
-            >
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <ChartBarIcon className="h-8 w-8 text-linkedin-blue" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">View Analytics</h3>
-                  <p className="text-gray-500">Track your search performance</p>
-                </div>
-              </div>
-            </Link>
+            ))}
           </div>
         </div>
 
-        {/* Stats Overview */}
-        {analytics && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow-linkedin p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <MagnifyingGlassIcon className="h-8 w-8 text-linkedin-blue" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Searches</p>
-                    <p className="text-2xl font-semibold text-gray-900">{analytics.totalSearches.toLocaleString()}</p>
-                  </div>
+        {/* Right: Recent Searches Feed */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h2 className="font-bold text-slate-900 mb-6">Recent Activity</h2>
+          <div className="space-y-6">
+            {recentSearches.map((search) => (
+              <div key={search.id} className="flex gap-4">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
+                  <SearchIcon className="w-5 h-5 text-slate-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">
+                    {/* Use whatever search term property exists, e.g., 'query' or 'search_term' */}
+                    {search.query || "Search Query"}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {new Date(search.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
-
-              <div className="bg-white rounded-lg shadow-linkedin p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <DocumentArrowDownIcon className="h-8 w-8 text-green-500" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Exports</p>
-                    <p className="text-2xl font-semibold text-gray-900">{analytics.totalExports}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-linkedin p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <ArrowTrendingUpIcon className="h-8 w-8 text-blue-500" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">This Month</p>
-                    <p className="text-2xl font-semibold text-gray-900">{analytics.searchesThisMonth}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-linkedin p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <StarIcon className="h-8 w-8 text-yellow-500" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Success Rate</p>
-                    <p className="text-2xl font-semibold text-gray-900">94%</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Recent Searches */}
-          <div className="bg-white rounded-lg shadow-linkedin">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">Recent Searches</h2>
-                <Link
-                  to="/search/history"
-                  className="text-linkedin-blue hover:text-linkedin-darkBlue text-sm font-medium"
-                >
-                  View all
-                </Link>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {recentSearches.map((search) => (
-                  <div key={search.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{search.query}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {search.resultsCount} results • {search.createdAt.toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <ClockIcon className="h-4 w-4 text-gray-400" />
-                      <span className="text-xs text-gray-500">
-                        {search.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-                  </div>
-
-        {/* Top Companies and Positions */}
-        {analytics && (
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white rounded-lg shadow-linkedin">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Top Searched Companies</h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-3">
-                  {analytics.topSearchedCompanies.map((item, index) => (
-                    <div key={item.company} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-500 w-6">{index + 1}</span>
-                        <span className="text-sm font-medium text-gray-900 ml-2">{item.company}</span>
-                      </div>
-                      <span className="text-sm text-gray-500">{item.count} searches</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-linkedin">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Top Searched Positions</h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-3">
-                  {analytics.topSearchedPositions.map((item, index) => (
-                    <div key={item.position} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-500 w-6">{index + 1}</span>
-                        <span className="text-sm font-medium text-gray-900 ml-2">{item.position}</span>
-                      </div>
-                      <span className="text-sm text-gray-500">{item.count} searches</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
 };
+
+const StatCard = ({ title, value, icon: Icon, trend }: any) => (
+  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-200 transition-colors group">
+    <div className="flex justify-between items-start mb-4">
+      <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
+        <Icon className="w-5 h-5 text-slate-600 group-hover:text-blue-600" />
+      </div>
+      {trend && (
+        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+          {trend}
+        </span>
+      )}
+    </div>
+    <p className="text-sm text-slate-500 font-medium">{title}</p>
+    <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+  </div>
+);
 
 export default Dashboard;

@@ -1,0 +1,17 @@
+# 1. STOP THE CACHE GHOST
+# This is the most important part to prevent the "Token Missing" or "Old JS" errors.
+<IfModule mod_headers.c>
+    # Forces the browser to check for a new index.html every time.
+    # This ensures it always sees the new main.HASH.js filename.
+    <FilesMatch "index\.html">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+
+    # Optional: Tell the browser it's okay to cache the JS/CSS files 
+    # because their names change (fingerprinted) with every build.
+    <FilesMatch "\.(js|css|png|jpg|jpeg|gif|ico)$">
+        Header set Cache-Control "max-age=31536000, public"
+    </FilesMatch>
+</IfModule>

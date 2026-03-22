@@ -5,6 +5,9 @@ import { Person, SearchFilter, SearchResult, SearchHistory, Analytics } from '..
 // PEOPLE SERVICE
 // ============================================
 
+const API_BASE = "/api";
+
+
 /**
  * Search for people based on filters
  */
@@ -12,7 +15,7 @@ export const searchPeople = async (filters: SearchFilter): Promise<SearchResult[
   try {
     // Call Laravel search endpoint via the adapter's axios instance
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const response = await axios.post('http://localhost:8000/api/people/search', filters, {
+    const response = await axios.post(`${API_BASE}/people/search`, filters, { // CHANGED THIS LINE
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
         'Content-Type': 'application/json',
@@ -44,6 +47,7 @@ export const searchPeople = async (filters: SearchFilter): Promise<SearchResult[
       } as Person,
       relevanceScore: typeof item.relevanceScore === 'number' ? item.relevanceScore : calculateRelevanceScore(item.person, filters),
       matchedFields: Array.isArray(item.matchedFields) ? item.matchedFields : getMatchedFields(item.person, filters),
+      access_map: item.access_map || { email: false, phone: false }
     }));
 
     return results;
@@ -59,7 +63,7 @@ export const searchPeople = async (filters: SearchFilter): Promise<SearchResult[
 export const getPersonById = async (id: string): Promise<Person | null> => {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const response = await axios.get(`http://localhost:8000/api/people/${id}`, {
+    const response = await axios.get(`${API_BASE}/people/${id}`, { // CHANGED THIS LINE
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
         Accept: 'application/json',
@@ -101,44 +105,7 @@ export const getPersonById = async (id: string): Promise<Person | null> => {
 // SEARCH HISTORY SERVICE
 // ============================================
 
-/**
- * Save a search to history
- */
-export const saveSearchHistory = async (
-  userId: string,
-  query: string | null,
-  filters: SearchFilter,
-  resultsCount: number
-): Promise<SearchHistory | null> => {
-  try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const response = await axios.post('http://localhost:8000/api/search-history', {
-      user_id: userId,
-      query,
-      filters,
-      results_count: resultsCount,
-    }, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-    });
 
-    const data = (response as any).data;
-    return {
-      id: String(data.id),
-      query: data.query || '',
-      filters: data.filters as SearchFilter,
-      resultsCount: data.results_count,
-      createdAt: new Date(data.created_at),
-      userId: String(data.user_id || userId),
-    };
-  } catch (error) {
-    console.error('Error saving search history:', error);
-    return null;
-  }
-};
 
 /**
  * Get search history for a user
@@ -146,7 +113,7 @@ export const saveSearchHistory = async (
 export const getSearchHistory = async (userId: string, limit: number = 50): Promise<SearchHistory[]> => {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const response = await axios.get('http://localhost:8000/api/search/history', {
+    const response = await axios.get(`${API_BASE}/search/history`, { // CHANGED THIS LINE
       params: { user_id: userId, limit },
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
@@ -175,7 +142,7 @@ return (data as any[]).map((item: any) => ({
 export const deleteSearchHistory = async (historyId: string): Promise<boolean> => {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    await axios.delete(`http://localhost:8000/api/search/history/${historyId}`, {
+    await axios.delete(`${API_BASE}/search/history/${historyId}`, { // CHANGED THIS LINE
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
         Accept: 'application/json',
@@ -195,11 +162,14 @@ export const deleteSearchHistory = async (historyId: string): Promise<boolean> =
 /**
  * Get analytics for a user
  */
-export const getAnalytics = async (userId: string): Promise<Analytics | null> => {
+export const getAnalytics = async (userId: string, range?: string): Promise<Analytics | null> => {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const response = await axios.get('http://localhost:8000/api/analytics', {
-      params: { user_id: userId },
+    const response = await axios.get(`${API_BASE}/analytics`, { // CHANGED THIS LINE
+      params: { 
+        user_id: userId,
+        range: range || '30d' // Add range parameter
+      },
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
         Accept: 'application/json',
@@ -211,9 +181,11 @@ export const getAnalytics = async (userId: string): Promise<Analytics | null> =>
     const analytics: Analytics = {
       totalSearches: data.totalSearches ?? 0,
       totalExports: data.totalExports ?? 0,
-      searchesThisMonth: data.searchesThisMonth ?? 0,
+      searchesInRange: data.searchesInRange ?? 0,
+      exportsInRange: data.exportsInRange ?? 0,
+      growthRate: data.growthRate ?? 0,
+      exportRate: data.exportRate ?? 0,
       exportsThisMonth: data.exportsThisMonth ?? 0,
-      topSearchedCompanies: data.topSearchedCompanies || [],
       topSearchedPositions: data.topSearchedPositions || [],
       searchesByDay: data.searchesByDay || [],
     };
@@ -323,4 +295,40 @@ function getMatchedFields(person: any, filters: SearchFilter): string[] {
 
   return matched;
 }
+
+/**
+ * Reveal a contact's email or phone number
+ */
+export const revealContact = async (personId: string, type: 'email' | 'phone'): Promise<{ status: string, value: string } | null> => {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    
+    // UPDATED: Path now includes the personId in the URL
+    const response = await axios.post(`${API_BASE}/people/${personId}/reveal`, 
+      { type: type }, // Payload ONLY contains type now
+      {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    /**
+     * BASED ON YOUR CURL: 
+     * Success: { data: { email: "..." } }
+     * Already Revealed: { message: "...", data: { email: "..." } }
+     */
+    const result = response.data;
+    return {
+      status: 'success',
+      value: result.data[type] // Extract email or phone from the data object
+    };
+  } catch (error) {
+    console.error('Error revealing contact:', error);
+    return null;
+  }
+};
+
 

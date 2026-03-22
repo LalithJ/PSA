@@ -97,6 +97,11 @@ export interface SearchResult {
   person: Person;
   relevanceScore: number;
   matchedFields: string[];
+  // Add this property to track reveal status
+  access_map: {
+    email: boolean;
+    phone: boolean;
+  };
 }
 
 export interface SearchHistory {
@@ -149,9 +154,12 @@ export interface Message {
 export interface Analytics {
   totalSearches: number;
   totalExports: number;
-  searchesThisMonth: number;
+  searchesInRange: number
+  exportsInRange: number;
+  growthRate: number;
+  exportRate: number;
   exportsThisMonth: number;
-  topSearchedCompanies: Array<{ company: string; count: number }>;
   topSearchedPositions: Array<{ position: string; count: number }>;
   searchesByDay: Array<{ date: string; count: number }>;
+
 }

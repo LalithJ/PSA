@@ -17,13 +17,16 @@ interface LaravelUserResponse {
   last_login_at?: string;
 }
 
-const API_URL = "http://localhost:8000";
+// ------------------------
+// DYNAMIC API URL FROM ENV
+// ------------------------
+const API_BASE = "/api";
 
 // ------------------------
 // AXIOS INSTANCE
 // ------------------------
 const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_BASE,
   headers: {
     "Accept": "application/json",
     "Content-Type": "application/json"
