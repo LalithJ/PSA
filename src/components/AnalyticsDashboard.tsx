@@ -1,24 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { getAnalytics } from '../services/database';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  ChartBarIcon, 
-  MagnifyingGlassIcon, 
+import React, { useState, useEffect } from "react";
+import { getAnalytics } from "../services/database";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  ChartBarIcon,
+  MagnifyingGlassIcon,
   DocumentArrowDownIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  CalendarIcon,
-  ClockIcon,
-  StarIcon
-} from '@heroicons/react/24/outline';
-import { Analytics } from '../types';
+  StarIcon,
+  ChevronDownIcon,
+} from "@heroicons/react/24/solid"; // Swapped to Solid for "Elite" weight
+import { Analytics } from "../types";
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -26,50 +21,45 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  ResponsiveContainer
-} from 'recharts';
+  ResponsiveContainer,
+} from "recharts";
 
 const AnalyticsDashboard: React.FC = () => {
-  const { user } = useAuth(); 
+  const { user } = useAuth();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "1y">(
+    "30d",
+  );
 
   useEffect(() => {
     const loadAnalytics = async () => {
-          if (!user?.id) {  // ← CHECKS IF USER EXISTS
+      if (!user?.id) {
         setLoading(false);
         return;
       }
       setLoading(true);
-      
-      // Simulate API call
-  const analyticsData = await getAnalytics(user.id,timeRange);
-   setAnalytics(analyticsData);
-      
-     
+      const analyticsData = await getAnalytics(user.id, timeRange);
+      setAnalytics(analyticsData);
       setLoading(false);
     };
-    
     loadAnalytics();
-  }, [timeRange]);
+  }, [timeRange, user?.id]);
 
-  const COLORS = ['#0077B5', '#00A0DC', '#0084BF', '#006699', '#004D73', '#00334D', '#001A26'];
+  // Elite Red Palette (Red Hat inspired)
+  const COLORS = ["#DC2626", "#991B1B", "#450A0A", "#EF4444", "#7F1D1D"];
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const getGrowthRate = (current: number, previous: number) => {
-    if (previous === 0) return 100;
-    return ((current - previous) / previous) * 100;
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-linkedin-gray flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-linkedin-blue"></div>
+      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+        <div className="h-12 w-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -77,236 +67,258 @@ const AnalyticsDashboard: React.FC = () => {
   if (!analytics) return null;
 
   return (
-    <div className="min-h-screen bg-linkedin-gray">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-              <p className="text-gray-600 mt-2">Track your people search performance and insights</p>
+    <div className="min-h-screen bg-[#fafafa] text-[#1a1a1a] antialiased pb-20">
+      <div className="max-w-[1200px] mx-auto px-6 py-10">
+        {/* Header - High Density */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 pb-8 border-b-2 border-gray-100">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 bg-red-600 rounded-full animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
+                System Intelligence
+              </span>
             </div>
-            
-            <div className="flex items-center space-x-4">
+            <h1 className="text-4xl font-black tracking-tighter text-gray-900">
+              Analytics Dashboard
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative">
               <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-linkedin-blue focus:border-linkedin-blue"
+                className="appearance-none bg-white pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest focus:border-red-600 outline-none transition-all cursor-pointer"
               >
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="1y">Last year</option>
+                <option value="7d">7 Days</option>
+                <option value="30d">30 Days</option>
+                <option value="90d">90 Days</option>
+                <option value="1y">1 Year</option>
               </select>
-              
-              <button className="bg-linkedin-blue text-white px-4 py-2 rounded-lg font-medium hover:bg-linkedin-darkBlue flex items-center">
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                Export Report
-              </button>
+              <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>
+
+            <button className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest border-b-4 border-red-800 hover:bg-red-500 active:translate-y-1 active:border-b-0 transition-all flex items-center gap-2">
+              <DocumentArrowDownIcon className="h-4 w-4" />
+              Export .CSV
+            </button>
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <MagnifyingGlassIcon className="h-8 w-8 text-linkedin-blue" />
+        {/* Key Metrics - Tactile Tiling */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          {[
+            {
+              label: "Total Searches",
+              val: analytics.searchesInRange,
+              icon: MagnifyingGlassIcon,
+              color: "text-red-600",
+              trend: "+12.5%",
+            },
+            {
+              label: "Total Exports",
+              val: analytics.totalExports,
+              icon: DocumentArrowDownIcon,
+              color: "text-gray-900",
+              trend: "+8.3%",
+            },
+            {
+              label: "Activity Vol",
+              val: analytics.searchesInRange,
+              icon: ChartBarIcon,
+              color: "text-red-600",
+              trend: "+15.2%",
+            },
+            {
+              label: "Success Rate",
+              val: "94.2%",
+              icon: StarIcon,
+              color: "text-orange-500",
+              trend: "+2.1%",
+            },
+          ].map((stat, i) => (
+            <div
+              key={i}
+              className="bg-white border-2 border-gray-100 p-6 rounded-3xl shadow-sm hover:border-red-100 transition-colors group"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                <span className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-lg">
+                  {stat.trend}
+                </span>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Searches</p>
-                <p className="text-2xl font-semibold text-gray-900">{analytics.searchesInRange.toLocaleString()}</p>
-                <div className="flex items-center mt-1">
-                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+12.5% from last month</span>
-                </div>
-              </div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">
+                {stat.label}
+              </p>
+              <p className="text-3xl font-black tracking-tighter font-mono">
+                {stat.val.toLocaleString()}
+              </p>
             </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <DocumentArrowDownIcon className="h-8 w-8 text-green-500" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Exports</p>
-                <p className="text-2xl font-semibold text-gray-900">{analytics.totalExports}</p>
-                <div className="flex items-center mt-1">
-                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+8.3% from last month</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ChartBarIcon className="h-8 w-8 text-blue-500" />
-              </div>
-              <div className="ml-4">
-               <p className="text-sm font-medium text-gray-500">
-    {timeRange === '7d' ? 'Last 7 Days' : 
-     timeRange === '30d' ? 'Last 30 Days' :
-     timeRange === '90d' ? 'Last 90 Days' : 
-     'Last Year'}
-  </p>
-  <p className="text-2xl font-semibold text-gray-900">{analytics.searchesInRange}</p>
-           
-                <div className="flex items-center mt-1">
-                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+15.2% from last month</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <StarIcon className="h-8 w-8 text-yellow-500" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Success Rate</p>
-                <p className="text-2xl font-semibold text-gray-900">94.2%</p>
-                <div className="flex items-center mt-1">
-                  <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+2.1% from last month</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Search Activity Chart */}
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Search Activity Over Time</h2>
-            <ResponsiveContainer width="100%" height={300}>
+        {/* Charts Row - Windows 1.0 Tiling logic */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+          <div className="lg:col-span-8 bg-white border-2 border-gray-100 rounded-[2.5rem] p-8 shadow-sm">
+            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-8">
+              Search Velocity
+            </h2>
+            <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={analytics.searchesByDay}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
+                <defs>
+                  <linearGradient id="colorRed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#DC2626" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#DC2626" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
                   tickFormatter={formatDate}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 10, fontWeight: 700, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <YAxis />
-                <Tooltip 
+                <YAxis hide />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "none",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                    fontWeight: "900",
+                    fontSize: "12px",
+                  }}
                   labelFormatter={(value) => formatDate(value)}
-                  formatter={(value) => [value, 'Searches']}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="#0077B5" 
-                  fill="#0077B5" 
-                  fillOpacity={0.3}
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  stroke="#DC2626"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorRed)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-   
-        {/* Bottom Row */}
-       
-          {/* Top Positions Chart */}
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Searched Positions</h2>
-            <ResponsiveContainer width="100%" height={300}>
+
+          <div className="lg:col-span-4 bg-white border-2 border-gray-100 rounded-[2.5rem] p-8 shadow-sm">
+            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-8">
+              Lead Composition
+            </h2>
+            <ResponsiveContainer width="100%" height={320}>
               <PieChart>
                 <Pie
                   data={analytics.topSearchedPositions}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ position, percent }: any) => `${position} ${((percent as number) * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
                   dataKey="count"
                 >
-                  {analytics.topSearchedPositions.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {analytics.topSearchedPositions.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
           </div>
-     </div>
+        </div>
 
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Performance Insights */}
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance Insights</h2>
-            <div className="space-y-4">
-             {/* Growth Rate */}
-<div className={`flex items-center justify-between p-4 ${analytics.growthRate >= 0 ? 'bg-green-50' : 'bg-red-50'} rounded-lg`}>
-  <div className="flex items-center">
-    {analytics.growthRate >= 0 ? 
-      <ArrowTrendingUpIcon className="h-5 w-5 text-green-500 mr-3" /> :
-      <ArrowTrendingDownIcon className="h-5 w-5 text-red-500 mr-3" />
-    }
-    <div>
-      <p className={`font-medium ${analytics.growthRate >= 0 ? 'text-green-900' : 'text-red-900'}`}>
-        Search Volume Growth
-      </p>
-      <p className={`text-sm ${analytics.growthRate >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-        {analytics.growthRate >= 0 ? 'Increased' : 'Decreased'} by {Math.abs(analytics.growthRate).toFixed(1)}%
-      </p>
-    </div>
-  </div>
-  <span className={`font-semibold ${analytics.growthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-    {analytics.growthRate >= 0 ? '+' : ''}{analytics.growthRate.toFixed(1)}%
-  </span>
-</div>
+        {/* Bottom Row - Performance + Table */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <section className="bg-white border-2 border-gray-100 rounded-[2.5rem] p-8">
+              <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-6">
+                Growth Intelligence
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <ArrowTrendingUpIcon className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-black text-gray-900">
+                        Volume Growth
+                      </p>
+                      <p className="text-[11px] font-bold text-gray-400">
+                        Monthly progression
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-black font-mono text-red-600">
+                    +{analytics.growthRate.toFixed(1)}%
+                  </span>
+                </div>
 
-{/* Export Rate */}
-<div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-  <div className="flex items-center">
-    <DocumentArrowDownIcon className="h-5 w-5 text-blue-500 mr-3" />
-    <div>
-      <p className="font-medium text-blue-900">Export Efficiency</p>
-      <p className="text-sm text-blue-700">
-        {analytics.exportRate.toFixed(1)}% of searches result in exports
-      </p>
-    </div>
-  </div>
-  <span className="text-blue-600 font-semibold">{analytics.exportRate.toFixed(1)}%</span>
-</div>
-            </div>
+                <div className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <DocumentArrowDownIcon className="h-5 w-5 text-gray-900" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-black text-gray-900">
+                        Export Efficiency
+                      </p>
+                      <p className="text-[11px] font-bold text-gray-400">
+                        Conversion to CSV
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-black font-mono text-gray-900">
+                    {analytics.exportRate.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </section>
           </div>
-       
-          {/* Top Positions Table */}
-          <div className="bg-white rounded-lg shadow-linkedin">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Top Positions Breakdown</h2>
+
+          <div className="bg-white border-2 border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm">
+            <div className="px-8 py-6 border-b border-gray-50">
+              <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">
+                Position Breakdown
+              </h2>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Position</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Searches</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Growth</th>
+            <table className="w-full">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th className="px-8 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Role
+                  </th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Hits
+                  </th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Trend
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {analytics.topSearchedPositions.map((item) => (
+                  <tr
+                    key={item.position}
+                    className="hover:bg-gray-50 transition-colors group"
+                  >
+                    <td className="px-8 py-4 text-[13px] font-black text-gray-900 group-hover:text-red-600 transition-colors">
+                      {item.position}
+                    </td>
+                    <td className="px-8 py-4 text-[13px] font-mono font-bold text-gray-500">
+                      {item.count}
+                    </td>
+                    <td className="px-8 py-4">
+                      <span className="text-[11px] font-black text-green-600">
+                        +{Math.floor(Math.random() * 25 + 3)}%
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {analytics.topSearchedPositions.map((item, index) => (
-                    <tr key={item.position}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.position}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{item.count}</td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className="text-green-600">+{Math.floor(Math.random() * 25 + 3)}%</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div> 
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { SearchFilter, SearchResult } from "../types";
 import toast from "react-hot-toast";
+import { useAuth, mapUserFromMetadata } from "./AuthContext";
 
 interface SearchContextType {
   searchResults: SearchResult[];
@@ -26,7 +27,8 @@ export const SearchProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const { setUser } = useAuth(); // Import useAuth to get the setter
+  const { updateUser } = useAuth();
   const performSearch = async (
     query: string,
     filters: SearchFilter,
@@ -34,10 +36,17 @@ export const SearchProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     setLoading(true);
     try {
-      const results = await import("../services/database").then(
+      const response = await import("../services/database").then(
         ({ searchPeople }) => searchPeople(filters),
       );
+      console.log("1. RAW API RESPONSE:", response);
+      const results = response.results;
       setSearchResults(results);
+
+      // Update User State (Credits)
+      if (response.user) {
+        updateUser(response.user);
+      }
 
       toast.success(
         `Found ${results.length} result${results.length !== 1 ? "s" : ""}`,

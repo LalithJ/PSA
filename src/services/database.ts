@@ -11,7 +11,7 @@ const API_BASE = "/api";
 /**
  * Search for people based on filters
  */
-export const searchPeople = async (filters: SearchFilter): Promise<SearchResult[]> => {
+export const searchPeople = async (filters: SearchFilter): Promise<{ results: SearchResult[]; user?: any }> => {
   try {
     // Call Laravel search endpoint via the adapter's axios instance
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
@@ -23,20 +23,22 @@ export const searchPeople = async (filters: SearchFilter): Promise<SearchResult[
       },
     });
 
-    const data = (response as any).data as any[];
 
-    // If backend already returns SearchResult[] shape (as provided), just coerce types where needed
-    const results: SearchResult[] = (data || []).map((item: any) => ({
+
+    const payload = response.data;
+    const rawData = payload.results || [];
+
+    const results: SearchResult[] = rawData.map((item: any) => ({
       id: String(item.id || item.person?.id),
       person: {
         ...item.person,
         id: String(item.person.id),
         // Ensure dates are Date objects
-        experience: (item.person.experience || []).map((exp: any) => ({
-          ...exp,
-          startDate: exp.startDate ? new Date(exp.startDate) : undefined,
-          endDate: exp.endDate ? new Date(exp.endDate) : undefined,
-        })),
+       experiences: (item.person.experiences || []).map((exp: any) => ({
+  ...exp,
+  startDate: exp.startDate ? new Date(exp.startDate) : undefined,
+  endDate: exp.endDate ? new Date(exp.endDate) : undefined,
+})),
         education: (item.person.education || []).map((edu: any) => ({
           ...edu,
           startDate: edu.startDate ? new Date(edu.startDate) : undefined,
@@ -50,7 +52,11 @@ export const searchPeople = async (filters: SearchFilter): Promise<SearchResult[
       access_map: item.access_map || { email: false, phone: false }
     }));
 
-    return results;
+    // Return the envelope so SearchContext can see the 'user'
+    return { 
+      results, 
+      user: payload.user // Pass this back to the context
+    };
   } catch (error) {
     console.error('Error searching people:', error);
     throw error;
@@ -76,11 +82,11 @@ export const getPersonById = async (id: string): Promise<Person | null> => {
     const person: Person = {
       ...p,
       id: String(p.id),
-      experience: (p.experience || []).map((exp: any) => ({
-        ...exp,
-        startDate: exp.startDate ? new Date(exp.startDate) : undefined,
-        endDate: exp.endDate ? new Date(exp.endDate) : undefined,
-      })),
+     experiences: (p.experiences || []).map((exp: any) => ({
+  ...exp,
+  startDate: exp.startDate ? new Date(exp.startDate) : undefined,
+  endDate: exp.endDate ? new Date(exp.endDate) : undefined,
+})),
       education: (p.education || []).map((edu: any) => ({
         ...edu,
         startDate: edu.startDate ? new Date(edu.startDate) : undefined,
@@ -215,7 +221,7 @@ function transformPersonFromDB(data: any): Person {
     avatar: data.avatar_url || undefined,
     bio: data.bio || undefined,
     skills: data.skills || [],
-    experience: (data.experience || []).map((exp: any) => ({
+    experiences: (data.experiences || []).map((exp: any) => ({
       id: exp.id,
       company: exp.company,
       position: exp.position,

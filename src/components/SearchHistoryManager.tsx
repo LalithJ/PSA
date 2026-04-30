@@ -1,33 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useSearch } from '../contexts/SearchContext';
-import { useNavigate } from 'react-router-dom';
-
-import { 
-  ClockIcon, 
-  MagnifyingGlassIcon, 
-  TrashIcon, 
-  EyeIcon,
+import React, { useState, useEffect } from "react";
+import { useSearch } from "../contexts/SearchContext";
+import { useNavigate } from "react-router-dom";
+import {
+  ClockIcon,
+  MagnifyingGlassIcon,
+  TrashIcon,
+  ArrowTopRightOnSquareIcon,
   DocumentArrowDownIcon,
-  FunnelIcon,
   CalendarIcon,
-  ChartBarIcon
-} from '@heroicons/react/24/outline';
-import { SearchHistory, SearchFilter } from '../types';
-import ExportManager from './ExportManager';
-import toast from 'react-hot-toast';
-import { useAuth } from '../contexts/AuthContext';
-import { getSearchHistory, deleteSearchHistory } from '../services/database';
+  ChartBarIcon,
+  XMarkIcon,
+} from "@heroicons/react/20/solid"; // Using 20/solid for a tighter UI feel
+import { SearchHistory, SearchFilter } from "../types";
+import ExportManager from "./ExportManager";
+import toast from "react-hot-toast";
+import { useAuth } from "../contexts/AuthContext";
+import { getSearchHistory, deleteSearchHistory } from "../services/database";
 
 const SearchHistoryManager: React.FC = () => {
   const { user } = useAuth();
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSearches, setSelectedSearches] = useState<string[]>([]);
-  const [filterType, setFilterType] = useState<'all' | 'today' | 'week' | 'month'>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'results' | 'query'>('date');
+  const [filterType, setFilterType] = useState<
+    "all" | "today" | "week" | "month"
+  >("all");
+  const [sortBy, setSortBy] = useState<"date" | "results" | "query">("date");
   const [showExportManager, setShowExportManager] = useState(false);
-const { performSearch, loading: searchLoading } = useSearch();
-const navigate = useNavigate();
+
+  const { performSearch } = useSearch();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadSearchHistory = async () => {
@@ -35,381 +37,313 @@ const navigate = useNavigate();
         setLoading(false);
         return;
       }
-
       setLoading(true);
-      
       try {
         const history = await getSearchHistory(user.id, 100);
         setSearchHistory(history);
       } catch (error) {
-        console.error('Error loading search history:', error);
-        toast.error('Failed to load search history');
+        toast.error("Failed to load history");
       } finally {
         setLoading(false);
       }
     };
-    
     loadSearchHistory();
   }, [user]);
 
-  const filteredHistory = searchHistory.filter(search => {
-    const now = new Date();
-    const searchDate = new Date(search.createdAt);
-    
-    switch (filterType) {
-      case 'today':
-        return searchDate.toDateString() === now.toDateString();
-      case 'week':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return searchDate >= weekAgo;
-      case 'month':
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        return searchDate >= monthAgo;
-      default:
-        return true;
-    }
-  }).sort((a, b) => {
-    switch (sortBy) {
-      case 'date':
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      case 'results':
-        return b.resultsCount - a.resultsCount;
-      case 'query':
-        return a.query.localeCompare(b.query);
-      default:
-        return 0;
-    }
-  });
+  // Logic Helpers
+  const totalResults = searchHistory.reduce(
+    (sum, s) => sum + (s.resultsCount || 0),
+    0,
+  );
 
-  const handleDeleteSearch = async (searchId: string) => {
+  const filteredHistory = searchHistory
+    .filter((search) => {
+      const now = new Date();
+      const searchDate = new Date(search.createdAt);
+      if (filterType === "today")
+        return searchDate.toDateString() === now.toDateString();
+      if (filterType === "week")
+        return now.getTime() - searchDate.getTime() <= 7 * 24 * 60 * 60 * 1000;
+      if (filterType === "month")
+        return now.getTime() - searchDate.getTime() <= 30 * 24 * 60 * 60 * 1000;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "results")
+        return (b.resultsCount || 0) - (a.resultsCount || 0);
+      if (sortBy === "query")
+        return (a.query || "").localeCompare(b.query || "");
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const handleDeleteSearch = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     try {
-      const success = await deleteSearchHistory(searchId);
+      const success = await deleteSearchHistory(id);
       if (success) {
-        setSearchHistory(prev => prev.filter(search => search.id !== searchId));
-        toast.success('Search deleted successfully');
-      } else {
-        toast.error('Failed to delete search');
+        setSearchHistory((prev) => prev.filter((s) => s.id !== id));
+        setSelectedSearches((prev) => prev.filter((itemId) => itemId !== id));
+        toast.success("Deleted");
       }
     } catch (error) {
-      console.error('Error deleting search:', error);
-      toast.error('Failed to delete search');
+      toast.error("Failed to delete");
     }
   };
-  const handleViewSearch = async (search: SearchHistory) => {
-  if (!user?.id) return;
-
-  // optional: show toast / spinner
-  try {
-    await performSearch(search.query, search.filters, user.id);
-    navigate('/search');
-  } catch (err) {
-    toast.error('Failed to load search');
-  }
-};
 
   const handleDeleteSelected = async () => {
     if (selectedSearches.length === 0) return;
-
     try {
-      const deletePromises = selectedSearches.map(id => deleteSearchHistory(id));
+      const deletePromises = selectedSearches.map((id) =>
+        deleteSearchHistory(id),
+      );
       const results = await Promise.all(deletePromises);
       const successCount = results.filter(Boolean).length;
 
-      if (successCount === selectedSearches.length) {
-        setSearchHistory(prev => prev.filter(search => !selectedSearches.includes(search.id)));
+      if (successCount > 0) {
+        setSearchHistory((prev) =>
+          prev.filter((search) => !selectedSearches.includes(search.id)),
+        );
         setSelectedSearches([]);
-        toast.success(`${successCount} searches deleted successfully`);
-      } else {
-        toast.error(`Only ${successCount} of ${selectedSearches.length} searches were deleted`);
-        // Reload history to sync state
-        if (user?.id) {
-          const history = await getSearchHistory(user.id, 100);
-          setSearchHistory(history);
-        }
+        toast.success(`${successCount} records deleted`);
       }
     } catch (error) {
-      console.error('Error deleting searches:', error);
-      toast.error('Failed to delete searches');
+      toast.error("Bulk delete failed");
     }
   };
 
-  const handleSelectAll = () => {
-    if (selectedSearches.length === filteredHistory.length) {
-      setSelectedSearches([]);
-    } else {
-      setSelectedSearches(filteredHistory.map(search => search.id));
+  const handleRestore = async (search: SearchHistory) => {
+    if (!user?.id) return;
+    try {
+      await performSearch(search.query, search.filters, user.id);
+      navigate("/search");
+    } catch (err) {
+      toast.error("Failed to restore");
     }
   };
 
-  const handleSelectSearch = (searchId: string) => {
-    setSelectedSearches(prev => 
-      prev.includes(searchId) 
-        ? prev.filter(id => id !== searchId)
-        : [...prev, searchId]
+  const toggleSelect = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    e.stopPropagation();
+    setSelectedSearches((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
-  };
-
-  const getRelativeTime = (date: Date) => {
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    if (diffInHours < 48) return 'Yesterday';
-    return `${Math.floor(diffInHours / 24)} days ago`;
-  };
-
-  const getFilterSummary = (filters: SearchFilter) => {
-    const parts = [];
-    if (filters.company) parts.push(`Company: ${filters.company}`);
-    if (filters.position) parts.push(`Position: ${filters.position}`);
-    if (filters.location) parts.push(`Location: ${filters.location}`);
-    if (filters.skills && filters.skills.length > 0) parts.push(`Skills: ${filters.skills.join(', ')}`);
-    return parts.join(' • ');
-  };
-
-  if (loading) {
+  if (loading)
     return (
-      <div className="min-h-screen bg-linkedin-gray flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-linkedin-blue"></div>
+      <div className="p-20 text-center animate-pulse font-mono text-[11px] uppercase tracking-widest">
+        Initialising Archive...
       </div>
     );
-  }
 
   return (
-    <div className="min-h-screen bg-linkedin-gray">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Search History</h1>
-              <p className="text-gray-600 mt-2">Manage and review your past searches</p>
+    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] antialiased">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Search History</h1>
+            <p className="text-[12px] text-gray-500 font-medium">
+              Manage and export lead generation logs
+            </p>
+          </div>
+          <button
+            onClick={() => setShowExportManager(true)}
+            className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-md text-[13px] font-semibold hover:bg-gray-50 transition-all shadow-sm"
+          >
+            <DocumentArrowDownIcon className="h-4 w-4 text-gray-400" />
+            Export CSV
+          </button>
+        </div>
+
+        {/* Stats Row - Compact */}
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {[
+            {
+              label: "Total Logs",
+              val: searchHistory.length,
+              color: "text-gray-900",
+            },
+            {
+              label: "Data Points",
+              val: totalResults.toLocaleString(),
+              color: "text-gray-900",
+            },
+            {
+              label: "Avg Yield",
+              val: Math.round(totalResults / (searchHistory.length || 1)),
+              color: "text-gray-900",
+            },
+            {
+              label: "Selected",
+              val: selectedSearches.length,
+              color: "text-blue-600",
+            },
+          ].map((s, i) => (
+            <div
+              key={i}
+              className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                {s.label}
+              </p>
+              <p className={`text-lg font-bold tabular-nums ${s.color}`}>
+                {s.val}
+              </p>
             </div>
-            
-            <div className="flex items-center space-x-4">
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div className="sticky top-4 z-30 flex items-center justify-between bg-white border border-gray-200 p-2 rounded-lg shadow-md mb-4">
+          <div className="flex items-center gap-2">
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as any)}
+              className="bg-gray-50 border-gray-200 rounded text-[12px] font-bold px-2 py-1 focus:ring-1 focus:ring-black outline-none"
+            >
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">Past Week</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-gray-50 border-gray-200 rounded text-[12px] font-bold px-2 py-1 focus:ring-1 focus:ring-black outline-none"
+            >
+              <option value="date">Newest First</option>
+              <option value="results">Most Results</option>
+              <option value="query">Alphabetical</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {selectedSearches.length > 0 && (
               <button
-                onClick={() => setShowExportManager(!showExportManager)}
-                className="bg-linkedin-blue text-white px-4 py-2 rounded-lg font-medium hover:bg-linkedin-darkBlue flex items-center"
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-1.5 text-red-600 text-[12px] font-black px-2 py-1 hover:bg-red-50 rounded transition-colors"
               >
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                Export History
+                <TrashIcon className="h-3.5 w-3.5" />
+                Delete ({selectedSearches.length})
               </button>
-            </div>
+            )}
+            <button
+              onClick={() =>
+                setSelectedSearches(
+                  selectedSearches.length === filteredHistory.length
+                    ? []
+                    : filteredHistory.map((h) => h.id),
+                )
+              }
+              className="text-gray-500 hover:text-black text-[12px] font-bold px-2"
+            >
+              {selectedSearches.length === filteredHistory.length
+                ? "Clear"
+                : "Select All"}
+            </button>
           </div>
         </div>
 
-        {/* Export Manager */}
-        {showExportManager && (
-          <div className="mb-8">
-            <ExportManager 
-              searchResults={[]} // Empty for now, would be populated with selected searches
-              onExportComplete={() => setShowExportManager(false)}
-            />
-          </div>
-        )}
-
-        {/* Filters and Controls */}
-        <div className="bg-white rounded-lg shadow-linkedin p-6 mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <FunnelIcon className="h-5 w-5 text-gray-400" />
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-linkedin-blue focus:border-linkedin-blue"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <ChartBarIcon className="h-5 w-5 text-gray-400" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-linkedin-blue focus:border-linkedin-blue"
-                >
-                  <option value="date">Sort by Date</option>
-                  <option value="results">Sort by Results</option>
-                  <option value="query">Sort by Query</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {selectedSearches.length > 0 && (
-                <button
-                  onClick={handleDeleteSelected}
-                  className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 flex items-center"
-                >
-                  <TrashIcon className="h-4 w-4 mr-2" />
-                  Delete Selected ({selectedSearches.length})
-                </button>
-              )}
-              
-              <button
-                onClick={handleSelectAll}
-                className="text-linkedin-blue hover:text-linkedin-darkBlue font-medium"
-              >
-                {selectedSearches.length === filteredHistory.length ? 'Deselect All' : 'Select All'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Search History List */}
-        <div className="bg-white rounded-lg shadow-linkedin overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">
-                Search History ({filteredHistory.length} searches)
-              </h2>
-              <div className="text-sm text-gray-500">
-                Showing {filteredHistory.length} of {searchHistory.length} searches
-              </div>
-            </div>
-          </div>
-          
-          <div className="divide-y divide-gray-200">
+        {/* Table-like List */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+          <div className="divide-y divide-gray-100">
             {filteredHistory.map((search) => (
-              <div key={search.id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start space-x-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedSearches.includes(search.id)}
-                    onChange={() => handleSelectSearch(search.id)}
-                    className="mt-1 h-4 w-4 text-linkedin-blue focus:ring-linkedin-blue border-gray-300 rounded"
-                  />
-                  
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          {search.query}
-                        </h3>
-                        
-                        <div className="flex items-center text-sm text-gray-500 mb-2">
-                          <ClockIcon className="h-4 w-4 mr-1" />
-                          <span>{formatDate(search.createdAt)}</span>
-                          <span className="mx-2">•</span>
-                          <span>{getRelativeTime(search.createdAt)}</span>
-                        </div>
-                        
-                        {getFilterSummary(search.filters) && (
-                          <div className="text-sm text-gray-600 mb-3">
-                            <FunnelIcon className="h-4 w-4 inline mr-1" />
-                            {getFilterSummary(search.filters)}
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center space-x-6 text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <MagnifyingGlassIcon className="h-4 w-4 mr-1" />
-                            <span>{search.resultsCount} results found</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <button onClick={() => handleViewSearch(search)} 
-                                className="text-linkedin-blue hover:text-linkedin-darkBlue p-2 rounded-lg hover:bg-linkedin-lightBlue">
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteSearch(search.id)}
-                          className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50"
+              <div
+                key={search.id}
+                onClick={() => handleRestore(search)}
+                className="group flex items-center gap-4 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedSearches.includes(search.id)}
+                  onChange={(e) => toggleSelect(e, search.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[14px] font-bold text-gray-900 truncate">
+                      {search.query || "Advanced Search"}
+                    </h3>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[11px] font-bold text-gray-400 tabular-nums">
+                        {new Date(search.createdAt).toLocaleDateString()}
+                      </span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => handleDeleteSearch(e, search.id)}
+                          className="p-1 hover:text-red-600 text-gray-400"
                         >
                           <TrashIcon className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
                   </div>
+
+                  <div className="mt-1.5 flex items-center gap-2 overflow-hidden">
+                    <span className="shrink-0 bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase">
+                      {search.resultsCount} hits
+                    </span>
+                    <div className="flex gap-1 overflow-hidden">
+                      {Object.entries(search.filters).map(([key, val]) => {
+                        if (!val || (Array.isArray(val) && val.length === 0))
+                          return null;
+                        return (
+                          <span
+                            key={key}
+                            className="text-[11px] text-gray-400 truncate"
+                          >
+                            <span className="capitalize">{key}:</span>{" "}
+                            <span className="text-gray-600">
+                              {Array.isArray(val) ? val.join(",") : val}
+                            </span>
+                            <span className="ml-1 text-gray-300">/</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
+
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-gray-300 group-hover:text-black shrink-0" />
               </div>
             ))}
-          </div>
-          
-          {filteredHistory.length === 0 && (
-            <div className="p-12 text-center">
-              <MagnifyingGlassIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No searches found</h3>
-              <p className="text-gray-600">
-                {filterType === 'all' 
-                  ? "You haven't performed any searches yet."
-                  : `No searches found for the selected time period.`
-                }
-              </p>
-            </div>
-          )}
-        </div>
 
-        {/* Statistics */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <MagnifyingGlassIcon className="h-8 w-8 text-linkedin-blue" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Searches</p>
-                <p className="text-2xl font-semibold text-gray-900">{searchHistory.length}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <ChartBarIcon className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Results</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {searchHistory.reduce((sum, search) => sum + search.resultsCount, 0)}
+            {filteredHistory.length === 0 && (
+              <div className="p-20 text-center">
+                <p className="text-[13px] font-bold text-gray-400">
+                  No records found
                 </p>
               </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <CalendarIcon className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">This Week</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {searchHistory.filter(search => {
-                    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-                    return new Date(search.createdAt) >= weekAgo;
-                  }).length}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-linkedin p-6">
-            <div className="flex items-center">
-              <ClockIcon className="h-8 w-8 text-purple-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Avg Results</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {Math.round(searchHistory.reduce((sum, search) => sum + search.resultsCount, 0) / searchHistory.length) || 0}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Simplified Export Modal */}
+      {showExportManager && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-[2px] p-4">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl border border-gray-200">
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <h3 className="text-[12px] font-bold uppercase tracking-tight text-gray-500">
+                Export Archive
+              </h3>
+              <button
+                onClick={() => setShowExportManager(false)}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <XMarkIcon className="h-5 w-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-6">
+              <ExportManager
+                searchResults={[]}
+                onExportComplete={() => setShowExportManager(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

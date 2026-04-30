@@ -56,9 +56,6 @@ const Search: React.FC = () => {
   }, [searchResults]);
 
   const onSubmit = (data: any) => {
-    // 1. Log to verify the main input is being captured
-    console.log("Form Raw Data:", data);
-
     // 2. The backend expects the main search string as 'name' within filters
     const filters = {
       name: data.query || "", // Mapping main query box to name filter

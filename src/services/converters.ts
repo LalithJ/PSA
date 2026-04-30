@@ -12,6 +12,8 @@ export interface SupabaseLikeUser {
     first_name?: string | null;
     last_name?: string | null;
     full_name?: string | null;
+    monthly_credits?: number;
+    topup_credits?: number;
   };
 }
 
@@ -27,7 +29,9 @@ function splitName(fullName?: string | null): { first_name: string | null; last_
 // Map a Laravel user payload into a Supabase-like user
 // Accepts various potential Laravel shapes: direct fields or nested under `profile`.
 export function mapLaravelUserToSupabaseUser(input: any): SupabaseLikeUser {
-  const profile = input?.profile || {};
+  const user = input?.data ?? input?.user ?? input ?? {};
+  const source = user?.user ?? user?.data ?? user;
+  const profile = source?.profile || {};
 
   // Prefer explicit first_name/last_name if present; otherwise derive from name
   const explicitFirst = input?.first_name ?? profile?.first_name ?? null;
@@ -47,16 +51,22 @@ export function mapLaravelUserToSupabaseUser(input: any): SupabaseLikeUser {
   // Build user_metadata including only relevant profile fields (avoid spreading entire user)
   const { id: _omitId, email: _omitEmail, created_at: _omitCreated, updated_at: _omitUpdated, ...profileRest } = profile || {};
 
-  return {
-    id: String(input?.id ?? ''),
-    email: input?.email ?? '',
-    created_at,
-    last_login_at,
+return {
+    id: String(source?.id ?? ''),
+    email: source?.email ?? '',
+    created_at: source?.created_at ?? null,
+    last_login_at: source?.last_login_at ?? null,
     user_metadata: {
-      first_name,
-      last_name,
-      full_name,
-      ...profileRest,
+      first_name: source?.first_name ?? source?.name ?? null,
+      last_name: source?.last_name ?? null,
+      
+      // ADD THIS LINE:
+      remaining_searches: Number(source?.remaining_searches ?? 0),
+      
+      monthly_credits: Number(source?.monthly_credits ?? 0),
+      topup_credits: Number(source?.topup_credits ?? 0),
+      plan: source?.plan ?? null,
+      ...profile,
     },
   };
 }

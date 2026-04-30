@@ -41,6 +41,16 @@ const SearchResultsModal: React.FC<Props> = ({ results, onClose }) => {
     setLocalResults(results);
   }, [results]);
 
+  // Watch localResults and log when it changes
+  useEffect(() => {
+    if (localResults.length > 0) {
+      console.log("DEBUG: localResults now has data:", localResults);
+      localResults.forEach((r) =>
+        console.log("DEBUG: person in SearchResultsModal:", r.person),
+      );
+    }
+  }, [localResults]);
+
   const handleReveal = async (personId: string, type: "email" | "phone") => {
     setLoadingReveal({ id: personId, type });
 

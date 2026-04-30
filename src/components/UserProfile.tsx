@@ -260,7 +260,7 @@ const UserProfile: React.FC = () => {
                   <span className="text-sm text-gray-500">/month</span>
                 </div>
                 <div className="text-sm text-gray-600 mb-4">
-                  {user?.subscriptionPlan?.maxSearches === -1 ? 'Unlimited' : user?.subscriptionPlan?.maxSearches} searches
+                  {user?.subscriptionPlan?.searchLimit === -1 ? 'Unlimited' : user?.subscriptionPlan?.searchLimit} searches
                 </div>
                 <Link
   to="/plans"

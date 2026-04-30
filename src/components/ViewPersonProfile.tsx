@@ -1,22 +1,34 @@
 import React from "react";
 import { Person } from "../types";
+import {
+  BriefcaseIcon,
+  AcademicCapIcon,
+  InformationCircleIcon,
+  GlobeAltIcon,
+  ArrowTopRightOnSquareIcon,
+} from "@heroicons/react/20/solid";
 
 interface Props {
   person: Person;
 }
 
 const ViewPersonProfile: React.FC<Props> = ({ person }) => {
+  // Defensive check for skills
   const skills = person.skills ?? [];
 
+  // FIXED: Defensive date formatting to handle strings or date objects
   const formatDate = (dateValue: any) => {
     if (!dateValue) return "";
     const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-    return isNaN(date.getTime())
-      ? ""
-      : date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    if (isNaN(date.getTime())) return "";
+
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
   };
 
-  const getUniqueSocials = () => {
+  const uniqueSocials = (() => {
     const socials = [...(person.socialProfiles || [])];
     if (
       person.linkedinUrl &&
@@ -25,87 +37,122 @@ const ViewPersonProfile: React.FC<Props> = ({ person }) => {
       socials.unshift({ platform: "LinkedIn", url: person.linkedinUrl });
     }
     return socials;
-  };
-
-  const uniqueSocials = getUniqueSocials();
+  })();
 
   return (
-    <div className="h-full bg-white animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="bg-white text-[#1A1A1A] antialiased p-8 max-w-5xl mx-auto shadow-sm min-h-screen">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-10 pb-8 border-b border-gray-100">
-        <img
-          src={
-            person.avatar ||
-            `https://ui-avatars.com/api/?name=${person.firstName}+${person.lastName}&background=007aff&color=fff`
-          }
-          alt={`${person.firstName} ${person.lastName}`}
-          className="h-32 w-32 rounded-2xl object-cover shadow-lg border-2 border-white ring-1 ring-black/5"
-        />
-        <div className="text-center md:text-left flex-1">
-          <h2 className="text-3xl font-black text-[#1d1d1f] tracking-tight">
+        <div className="relative group">
+          <img
+            src={
+              person.avatar ||
+              `https://ui-avatars.com/api/?name=${person.firstName}+${person.lastName}&background=f3f4f6&color=1a1a1a`
+            }
+            alt={`${person.firstName} ${person.lastName}`}
+            className="h-24 w-24 md:h-28 md:w-28 rounded-2xl object-cover border border-gray-200 shadow-sm transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        </div>
+
+        <div className="flex-1 text-center md:text-left min-w-0">
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900 leading-none mb-2">
             {person.firstName} {person.lastName}
           </h2>
-          <p className="text-lg text-[#007aff] font-semibold mt-1">
+          <p className="text-[16px] font-semibold text-gray-700 mb-1">
             {person.position}
           </p>
-          <p className="text-[#86868b] font-medium text-sm uppercase tracking-wider mt-1">
-            {person.company} • {person.location || "Remote"}
-          </p>
+          <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-3 gap-y-1 text-[13px] text-gray-500 font-medium">
+            <span className="text-gray-900">{person.company}</span>
+            <span className="hidden md:inline text-gray-300">•</span>
+            <span className="flex items-center gap-1">
+              <GlobeAltIcon className="h-4 w-4 text-gray-400" />
+              {person.location || "Remote"}
+            </span>
+          </div>
 
-          <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-6">
+          <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-6">
             {uniqueSocials.map((social, idx) => (
               <a
                 key={idx}
                 href={social.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] text-xs font-bold rounded-full transition-colors border border-black/[0.03]"
+                className="group inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-white text-[11px] font-bold rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all duration-200"
               >
-                <span
-                  className={`w-2 h-2 rounded-full ${social.platform.toLowerCase() === "linkedin" ? "bg-[#0077b5]" : "bg-gray-400"}`}
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    social.platform.toLowerCase() === "linkedin"
+                      ? "bg-blue-600"
+                      : "bg-gray-400"
+                  }`}
                 />
-                {social.platform}
+                <span className="text-gray-700">{social.platform}</span>
+                <ArrowTopRightOnSquareIcon className="h-3 w-3 text-gray-300 group-hover:text-blue-500 transition-colors" />
               </a>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Left Column: Experience & Bio */}
-        <div className="lg:col-span-2 space-y-12">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+        {/* Main Content Column */}
+        <div className="md:col-span-8 space-y-10">
+          {/* Bio Section */}
           {person.bio && (
-            <section>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">
-                About
-              </h3>
-              <p className="text-[#424245] leading-relaxed text-[15px]">
-                {person.bio}
+            <section className="bg-blue-50/30 rounded-2xl p-6 border border-blue-50">
+              <div className="flex items-center gap-2 mb-4">
+                <InformationCircleIcon className="h-4 w-4 text-blue-500" />
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-600/70">
+                  Professional Summary
+                </h3>
+              </div>
+              <p className="text-[14px] text-gray-700 leading-relaxed italic font-medium">
+                "{person.bio}"
               </p>
             </section>
           )}
 
-          {person.experience && person.experience.length > 0 && (
+          {/* Work History Section */}
+          {person.experiences && person.experiences.length > 0 && (
             <section>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6">
-                Experience
-              </h3>
-              <div className="space-y-8 relative before:absolute before:inset-0 before:left-[7px] before:w-px before:bg-gray-100">
-                {person.experience.map((exp) => (
-                  <div key={exp.id} className="relative pl-8">
-                    <div className="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full bg-white border-2 border-[#007aff] z-10" />
-                    <h4 className="font-bold text-[#1d1d1f] text-base leading-none">
-                      {exp.position}
-                    </h4>
-                    <p className="text-[#007aff] text-sm font-semibold mt-1">
+              <div className="flex items-center gap-2 mb-6">
+                <BriefcaseIcon className="h-4 w-4 text-gray-400" />
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  Work History
+                </h3>
+              </div>
+              <div className="space-y-6 border-l-[1.5px] border-gray-100 ml-2">
+                {person.experiences.map((exp) => (
+                  <div key={exp.id} className="relative pl-8 group">
+                    {/* Timeline Node */}
+                    <div
+                      className={`absolute -left-[9.5px] top-1.5 h-[17px] w-[17px] rounded-full bg-white border-[3px] transition-colors duration-200 ${
+                        exp.current
+                          ? "border-blue-600 scale-110 shadow-sm"
+                          : "border-gray-200 group-hover:border-gray-400"
+                      }`}
+                    />
+
+                    <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 mb-1">
+                      <h4 className="text-[15px] font-bold text-gray-900 tracking-tight leading-tight">
+                        {exp.position}
+                      </h4>
+                      <span className="text-[11px] font-bold text-gray-400 tabular-nums uppercase bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                        {formatDate(exp.startDate)} –{" "}
+                        {exp.current
+                          ? "Present"
+                          : exp.endDate
+                            ? formatDate(exp.endDate)
+                            : ""}
+                      </span>
+                    </div>
+
+                    <p className="text-[13px] font-bold text-blue-600/80 mb-3">
                       {exp.company}
                     </p>
-                    <p className="text-xs font-medium text-[#86868b] mt-1">
-                      {formatDate(exp.startDate)} —{" "}
-                      {exp.current ? "Present" : formatDate(exp.endDate)}
-                    </p>
+
                     {exp.description && (
-                      <p className="mt-3 text-[13px] text-[#424245] leading-relaxed bg-gray-50 p-3 rounded-lg border border-black/[0.02]">
+                      <p className="text-[13px] text-gray-600 leading-relaxed bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors">
                         {exp.description}
                       </p>
                     )}
@@ -116,27 +163,28 @@ const ViewPersonProfile: React.FC<Props> = ({ person }) => {
           )}
         </div>
 
-        {/* Right Column: Education & Skills */}
-        <div className="space-y-12">
+        {/* Sidebar Column */}
+        <div className="md:col-span-4 space-y-10">
+          {/* Education Section */}
           {person.education && person.education.length > 0 && (
             <section>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">
-                Education
-              </h3>
-              <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-5">
+                <AcademicCapIcon className="h-4 w-4 text-gray-400" />
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  Education
+                </h3>
+              </div>
+              <div className="space-y-5">
                 {person.education.map((edu) => (
                   <div key={edu.id} className="group">
-                    <h4 className="font-bold text-[#1d1d1f] text-sm group-hover:text-[#007aff] transition-colors">
+                    <h4 className="text-[14px] font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">
                       {edu.institution}
                     </h4>
-                    <p className="text-xs text-[#424245] font-medium mt-0.5">
-                      {edu.degree} in {edu.field}
+                    <p className="text-[12px] text-gray-600 mt-1 font-medium">
+                      {edu.degree}
                     </p>
-                    <p className="text-[11px] text-[#86868b] mt-1 font-bold">
-                      Class of{" "}
-                      {edu.endDate
-                        ? new Date(edu.endDate).getFullYear()
-                        : "N/A"}
+                    <p className="text-[11px] text-gray-400 mt-0.5 font-semibold italic">
+                      {edu.field}
                     </p>
                   </div>
                 ))}
@@ -144,16 +192,19 @@ const ViewPersonProfile: React.FC<Props> = ({ person }) => {
             </section>
           )}
 
+          {/* Skills Section */}
           {skills.length > 0 && (
             <section>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">
-                Skills
-              </h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  Expertise
+                </h3>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
                 {skills.map((skill, i) => (
                   <span
                     key={i}
-                    className="px-3 py-1 bg-white border border-black/10 text-[#1d1d1f] text-[11px] font-bold rounded-md shadow-sm"
+                    className="px-2.5 py-1 bg-white border border-gray-200 text-gray-700 text-[10.5px] font-bold rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-gray-300 hover:shadow-sm transition-all"
                   >
                     {skill}
                   </span>

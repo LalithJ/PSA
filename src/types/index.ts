@@ -3,25 +3,36 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  avatar?: string;
+  avatar?: string;     // Maps from avatar_url
   bio?: string;
   phone?: string;
   location?: string;
+  
+  remainingSearches: number;
+  // Credits (The "Bank" balance)
+  remainingMonthlyCredits: number; // Maps from monthly_credits
+  topupCredits: number;   // Maps from topup_credits
+  
   role: 'admin' | 'user' | 'premium';
-  subscriptionPlan: SubscriptionPlan;
+  
+  // Relationship (The "Plan" details)
+  subscriptionPlan: SubscriptionPlan; 
+  subscriptionExpiresAt?: Date; // Maps from subscription_expires_at
+  user_metadata?: any;
   createdAt: Date;
   lastLoginAt: Date;
 }
 
 export interface SubscriptionPlan {
   id: string;
+  slug: string; // Added from Laravel
   name: 'free' | 'basic' | 'premium' | 'enterprise';
   price: number;
-  currency: string;
-  features: string[];
-  maxSearches: number;
-  maxExports: number;
-  expiresAt?: Date;
+  monthlyCreditLimit: number; // Renamed from maxSearches to match monthly_credits
+  searchLimit: number;    // Added from Laravel search_limit
+  isActive: boolean;      // Added from Laravel is_active
+  features: string[];     // Keep this for UI display
+  currency?: string;      // Keep for formatting
 }
 export interface SupabaseError {
   message: string;
@@ -42,13 +53,13 @@ export interface Person {
   avatar?: string;
   bio?: string;
   skills?: string[];
-  experience?: Experience[];
+  experiences?: Experiences[];
   education?: Education[];
   socialProfiles?: SocialProfile[];
   lastUpdated: Date;
 }
 
-export interface Experience {
+export interface Experiences {
   id: string;
   company: string;
   position: string;
